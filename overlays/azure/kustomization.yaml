@@ -1,13 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
 # Production-shaped overlay for AKS.
 #
 # The `images:` digests below are rewritten automatically by the `gitops-handoff`
 # job of the Cortex CI (yq edits `.images[].digest` matching `.name`), which opens
 # a PR here. Do not hand-edit them except for the first bootstrap.
 namespace: cortex
-
 resources:
   - ../../base
   # Uncomment once you have sealed the secrets (see README, "Secrets"):
@@ -17,16 +15,14 @@ resources:
   # - ingress.yaml
   # Falco on the nodes POSTs alerts here; see falco-intake.yaml.example:
   # - falco-intake.yaml
-
 images:
   - name: ghcr.io/lakhal-farah/cortex-api
     # PLACEHOLDER until the first handoff PR lands.
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+    digest: sha256:eff6e572efabbf7c2bc2078665b8621a5bf591c83d19310779ed3355e39bbbf2
   - name: ghcr.io/lakhal-farah/cortex-web
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+    digest: sha256:fa702f2ae44d7a7271b8411de9900e95a5e45f4ff83aeb7a60cdbefb4d30f52c
   - name: ghcr.io/lakhal-farah/cortex-collector
-    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
-
+    digest: sha256:dcc72f36220c41048f638c2d217848c129508ac00914e694683e4bd9c802e50f
 configMapGenerator:
   - name: cortex-config
     behavior: merge
