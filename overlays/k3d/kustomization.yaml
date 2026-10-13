@@ -19,8 +19,20 @@ images:
   - name: ghcr.io/lakhal-farah/cortex-web
     newName: cortex-web
     newTag: local
+  - name: ghcr.io/lakhal-farah/cortex-collector
+    newName: cortex-collector
+    newTag: local
+  # Rehearsal-only mail sink; scripts/pin-digests.sh adds the digest.
+  - name: docker.io/axllent/mailpit
+    newTag: latest
 
 configMapGenerator:
+  # No lab nodes are reachable from k3d: keep the collector up (so the API gets
+  # clean "unknown" answers) but do not run Trivy.
+  - name: cortex-collector-config
+    behavior: merge
+    literals:
+      - COLLECTOR_TRIVY_ENABLED=false
   - name: cortex-config
     behavior: merge
     literals:
@@ -41,3 +53,11 @@ secretGenerator:
       - CORTEX_API_KEY=dev-api-key-not-secret
       - CORTEX_JWT_SECRET=dev-jwt-secret-not-secret-0123456789abcdef
       - CORTEX_ADMIN_PASSWORD=dev-admin-Passw0rd
+      - COLLECTOR_FALCO_TOKEN=dev-falco-token-not-secret
+  # DEV placeholders: an empty inventory and a dummy key (the collector starts, finds no nodes).
+  - name: collector-ssh
+    options:
+      disableNameSuffixHash: true
+    literals:
+      - id_ed25519=dev-placeholder-not-a-key
+      - "hosts.ini=# k3d rehearsal, no nodes"

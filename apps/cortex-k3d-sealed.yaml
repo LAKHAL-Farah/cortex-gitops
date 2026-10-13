@@ -1,0 +1,21 @@
+# Argo CD Application for the k3d cluster with SEALED secrets (Step 7).
+# Use this OR cortex-k3d.yaml, never both: they manage the same namespace.
+# Prereqs: apps/sealed-secrets.yaml is Healthy and
+# overlays/k3d-sealed/sealed-cortex-secrets.yaml is merged to main and referenced.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cortex-k3d-sealed
+  namespace: argocd
+spec:
+  project: cortex
+  source:
+    repoURL: https://github.com/LAKHAL-Farah/cortex-gitops.git
+    targetRevision: main
+    path: overlays/k3d-sealed
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cortex
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true]

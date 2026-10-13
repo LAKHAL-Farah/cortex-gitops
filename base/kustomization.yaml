@@ -2,7 +2,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # The base is environment-neutral: no Secret objects (overlays supply
-# `cortex-secrets`), no ingress, no environment-specific URLs.
+# `cortex-secrets` and `collector-ssh`), no ingress, no environment-specific URLs.
 namespace: cortex
 
 resources:
@@ -12,6 +12,7 @@ resources:
   - neo4j.yaml
   - api.yaml
   - web.yaml
+  - collector.yaml
 
 labels:
   - pairs:
@@ -28,6 +29,9 @@ configMapGenerator:
   - name: cortex-web-config
     envs:
       - config/web.env
+  - name: cortex-collector-config
+    envs:
+      - config/collector.env
 
 # Image names are exact and lowercase (GHCR requires it). They MUST match what
 # the Cortex CI pushes (ghcr.io/<owner lowercase>/cortex-<svc>) and what its
@@ -40,6 +44,8 @@ images:
   - name: ghcr.io/lakhal-farah/cortex-api
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
   - name: ghcr.io/lakhal-farah/cortex-web
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: ghcr.io/lakhal-farah/cortex-collector
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
   # Third-party images. TODO: pin by digest too (crane digest postgres:16).
   - name: postgres

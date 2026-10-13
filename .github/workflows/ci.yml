@@ -57,13 +57,15 @@ jobs:
       - name: Build + kubeconform (base, overlays, apps)
         run: bash ./scripts/validate.sh
 
-      - name: Guard - no plaintext Secret in the azure overlay
+      - name: Guard - no plaintext Secret in the azure / k3d-sealed overlays
         run: |
           set -euo pipefail
-          if kustomize build overlays/azure | grep -qE '^kind: Secret$'; then
-            echo "::error::overlays/azure renders a plaintext Secret. Use a SealedSecret."
-            exit 1
-          fi
+          for o in azure k3d-sealed; do
+            if kustomize build "overlays/$o" | grep -qE '^kind: Secret$'; then
+              echo "::error::overlays/$o renders a plaintext Secret. Use a SealedSecret."
+              exit 1
+            fi
+          done
 
       - name: Guard - no placeholder image digest in the azure overlay
         run: |
