@@ -1,10 +1,8 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
 # The base is environment-neutral: no Secret objects (overlays supply
 # `cortex-secrets` and `collector-ssh`), no ingress, no environment-specific URLs.
 namespace: cortex
-
 resources:
   - namespace.yaml
   - serviceaccount.yaml
@@ -13,13 +11,11 @@ resources:
   - api.yaml
   - web.yaml
   - collector.yaml
-
 labels:
   - pairs:
       app.kubernetes.io/part-of: cortex
       app.kubernetes.io/managed-by: kustomize
     includeSelectors: false
-
 # Non-secret configuration. A hash suffix is appended to each generated
 # ConfigMap name, so changing a value rolls the pods that use it.
 configMapGenerator:
@@ -32,7 +28,6 @@ configMapGenerator:
   - name: cortex-collector-config
     envs:
       - config/collector.env
-
 # Image names are exact and lowercase (GHCR requires it). They MUST match what
 # the Cortex CI pushes (ghcr.io/<owner lowercase>/cortex-<svc>) and what its
 # `gitops-handoff` job edits with yq in overlays/azure/kustomization.yaml.
@@ -50,5 +45,7 @@ images:
   # Third-party images. TODO: pin by digest too (crane digest postgres:16).
   - name: postgres
     newTag: "16"
+    digest: sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
   - name: neo4j
     newTag: 5-community
+    digest: sha256:f1e52d4dc6da122468c4a3c1050a4f5e117f6d3268625237c34d49166f0d6082
