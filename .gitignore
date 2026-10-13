@@ -6,3 +6,4 @@ secrets.env
 kubeseal-cert.pem.local
 .env
 .DS_Store
+collector-secrets/

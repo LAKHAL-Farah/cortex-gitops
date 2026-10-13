@@ -7,6 +7,7 @@ CI never deploys: it opens a PR here that bumps image digests.
 ```
 base/                 environment-neutral manifests (derived from infra/docker-compose.yml)
 overlays/k3d/         local rehearsal: local images, DEV secrets, mailpit, Traefik ingress
+overlays/k3d-sealed/  same, but secrets come from a SealedSecret (no plaintext in git)
 overlays/azure/       AKS: digest-pinned images (bumped by CI), SealedSecrets, your ingress
 apps/                 Argo CD AppProject + Applications (k3d, azure, sealed-secrets controller)
 scripts/              validate / k3d helpers / secret sealing
@@ -20,6 +21,7 @@ scripts/              validate / k3d helpers / secret sealing
 | `web` | Deployment | `CORTEX_API_URL=http://api:8000`; probes `/login` |
 | `postgres` | StatefulSet + PVC | `postgres:16`, runs as uid 999 |
 | `neo4j` | StatefulSet + PVC | `neo4j:5-community`, runs as uid 7474 |
+| `collector` | Deployment (1 replica, `Recreate`) + PVC | security collector: SSH to the nodes (packages, ports, Trivy, Keystone log) and Falco intake on `:9110`; needs `collector-ssh` Secret and a route to the nodes, see `GUIDE-collector.md` |
 
 All pods: `runAsNonRoot`, `seccompProfile: RuntimeDefault`, all capabilities dropped, no
 privilege escalation, no service-account token, no service-link env vars, resource requests and
@@ -50,28 +52,39 @@ Open <http://cortex.localhost:8080> (`admin` / `dev-admin-Passw0rd`; the app for
 Mail sink: <http://mail.cortex.localhost:8080>. If `*.localhost` does not resolve:
 `kubectl -n cortex port-forward svc/web 3000:3000`.
 
-### Same thing through Argo CD (the real GitOps loop)
+### Same thing through Argo CD (the real GitOps loop, sealed secrets)
 
 ```bash
-kubectl create namespace argocd
-kubectl apply -n argocd --server-side -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-kubectl apply -f apps/project.yaml -f apps/cortex-k3d.yaml
+./scripts/argocd-install.sh                       # pinned + checksum-verified Argo CD, AppProject
+kubectl apply -f apps/sealed-secrets.yaml         # controller (chart pinned), installed by Argo
+kubectl -n sealed-secrets rollout status deploy/sealed-secrets
+cp secrets.env.example secrets.env                # fill in (URL-safe passwords)
+OVERLAY=k3d-sealed ./scripts/seal-secrets.sh      # -> overlays/k3d-sealed/sealed-cortex-secrets.yaml
+# uncomment `- sealed-cortex-secrets.yaml` in overlays/k3d-sealed/kustomization.yaml,
+# commit on a branch, open a PR, merge it (Argo reads main)
+kubectl apply -f apps/cortex-k3d-sealed.yaml      # the LAST manual kubectl apply
 ```
 
-Argo pulls `overlays/k3d` from GitHub `main`, so push first. Tear down: `./scripts/k3d-down.sh`.
+Use `cortex-k3d-sealed` **or** `cortex-k3d` (DEV secrets), never both. The sealing key lives in
+the cluster: after `k3d-down.sh` you must re-seal (or back up/restore the key with
+`kubectl -n sealed-secrets get secret -l sealedsecrets.bitnami.com/sealed-secrets-key -o yaml`,
+stored OUTSIDE git). Tear down: `./scripts/k3d-down.sh`.
+
+Pull check (Step 5): `./scripts/k3d-pull-test.sh sha256:<digest> [api|web]`.
+Pin third-party images: `./scripts/pin-digests.sh` (needs `crane` + `yq`).
 
 ## Image digests
 
 `overlays/azure/kustomization.yaml` `images:` is rewritten by the Cortex CI `gitops-handoff`
 job (`yq` sets `.digest` on the entry whose `.name` matches). The all-zero digests are
 placeholders; the PR check warns while they remain. Names must stay exactly
-`ghcr.io/lakhal-farah/cortex-{api,web}`.
+`ghcr.io/lakhal-farah/cortex-{api,web,collector}`.
 
 ## Secrets
 
 Only **SealedSecrets** are committed. `cortex-secrets` must contain
 `CORTEX_DB_PASSWORD`, `CORTEX_NEO4J_PASSWORD`, `CORTEX_API_KEY`, `CORTEX_JWT_SECRET`,
-`CORTEX_ADMIN_PASSWORD` (required) and `QDRANT_API_KEY`, `NVIDIA_API_KEY`, `TAVILY_API_KEY`,
+`CORTEX_ADMIN_PASSWORD`, `COLLECTOR_FALCO_TOKEN` (required) and `QDRANT_URL`, `QDRANT_API_KEY`, `NVIDIA_API_KEY`, `TAVILY_API_KEY`,
 `SMTP_USERNAME`, `SMTP_PASSWORD` (optional).
 
 ```bash
@@ -79,7 +92,7 @@ cp secrets.env.example secrets.env   # gitignored; fill it in (URL-safe password
 ./scripts/seal-secrets.sh            # -> overlays/azure/sealed-cortex-secrets.yaml
 ```
 
-Then uncomment it in `overlays/azure/kustomization.yaml`. CI fails if the azure overlay ever
+A second Secret, `collector-ssh` (key `id_ed25519` + `hosts.ini` from the gitignored `collector-secrets/`), is sealed by the same script. Then uncomment both sealed files in `overlays/azure/kustomization.yaml`. CI fails if the azure overlay ever
 renders a plaintext `Secret`. The k3d overlay contains fake DEV credentials on purpose.
 
 ## Known gaps (compared with the compose stack)

@@ -9,6 +9,7 @@ kubectl -n "$NS" rollout status statefulset/postgres --timeout=300s
 kubectl -n "$NS" rollout status statefulset/neo4j --timeout=300s
 kubectl -n "$NS" rollout status deployment/api --timeout=600s
 kubectl -n "$NS" rollout status deployment/web --timeout=300s
+kubectl -n "$NS" rollout status deployment/collector --timeout=300s
 kubectl -n "$NS" get pods
 echo
 echo "UI:   http://cortex.localhost:8080   (admin / dev-admin-Passw0rd, you will be asked to change it)"

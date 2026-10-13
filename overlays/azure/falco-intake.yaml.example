@@ -1,0 +1,24 @@
+# Falco on the OpenStack nodes POSTs to http://<this IP>:9110/falco?token=...
+# The ClusterIP `collector` Service is not reachable from the lab, so expose it on an
+# INTERNAL Azure load balancer (private IP reachable over your VPN/peering).
+# Copy to falco-intake.yaml, uncomment it in kustomization.yaml, then
+#   kubectl -n cortex get svc collector-falco     # EXTERNAL-IP = the address Falco must use
+# Restrict who may call it with loadBalancerSourceRanges (your lab node CIDRs).
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector-falco
+  labels:
+    app.kubernetes.io/name: collector
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+    # service.beta.kubernetes.io/azure-load-balancer-internal-subnet: "<subnet>"   # TODO
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/name: collector
+  loadBalancerSourceRanges:
+    - 10.0.1.0/24      # TODO: your node CIDRs
+    - 10.0.2.0/24
+  ports:
+    - { name: http, port: 9110, targetPort: http }

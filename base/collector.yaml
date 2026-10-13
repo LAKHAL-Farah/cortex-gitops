@@ -1,0 +1,125 @@
+# Security collector (infra/collector in the Cortex repo). The API's Security,
+# exposed-ports, kernel-signals (Falco) and Keystone-token checks read it over
+# HTTP; without it those pages degrade to "unknown". It:
+#   - SSHes into the OpenStack nodes (packages, listening ports, Trivy, Keystone log),
+#   - receives Falco alerts on POST /falco?token=...,
+#   - keeps Falco alerts + Trivy results in /data.
+# It needs a network route from the cluster to the nodes (see GUIDE-collector.md).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: collector-data
+  labels:
+    app.kubernetes.io/name: collector
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  labels:
+    app.kubernetes.io/name: collector
+    app.kubernetes.io/component: security
+spec:
+  selector:
+    app.kubernetes.io/name: collector
+  ports:
+    - { name: http, port: 9110, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collector
+  labels:
+    app.kubernetes.io/name: collector
+    app.kubernetes.io/component: security
+spec:
+  # One replica: alerts are held in memory and persisted to a RWO volume, and the
+  # background refresh would otherwise SSH every node once per replica.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: collector
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: collector
+        app.kubernetes.io/component: security
+    spec:
+      serviceAccountName: cortex
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10002
+        runAsGroup: 10002
+        fsGroup: 10002
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: collector
+          image: ghcr.io/lakhal-farah/cortex-collector   # digest set via kustomize `images:`
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 9110 }
+          envFrom:
+            - configMapRef: { name: cortex-collector-config }
+          env:
+            - { name: HOME, value: /tmp }
+            - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
+            # Same value is in the nodes' Falco http_output URL (?token=...).
+            - name: COLLECTOR_FALCO_TOKEN
+              valueFrom:
+                secretKeyRef: { name: cortex-secrets, key: COLLECTOR_FALCO_TOKEN }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 3
+            failureThreshold: 30
+          # /health answers 503 when the inventory is unreadable: not ready, but a
+          # restart would not fix a bad mount, so liveness is a plain TCP check.
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 15
+            timeoutSeconds: 5
+          livenessProbe:
+            tcpSocket: { port: http }
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: data, mountPath: /data }
+            - { name: ssh, mountPath: /ssh, readOnly: true }
+            - { name: inventory, mountPath: /inventory, readOnly: true }
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 64Mi } }
+        - name: data
+          persistentVolumeClaim:
+            claimName: collector-data
+        # Secret `collector-ssh` (sealed): id_ed25519 (private key) + hosts.ini.
+        - name: ssh
+          secret:
+            secretName: collector-ssh
+            defaultMode: 0440       # readable by fsGroup; paramiko does not check modes
+            items:
+              - { key: id_ed25519, path: id_ed25519 }
+        - name: inventory
+          secret:
+            secretName: collector-ssh
+            items:
+              - { key: hosts.ini, path: hosts.ini }

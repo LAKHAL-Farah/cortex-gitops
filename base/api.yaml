@@ -92,6 +92,11 @@ spec:
               valueFrom:
                 secretKeyRef: { name: cortex-secrets, key: CORTEX_ADMIN_PASSWORD }
             # --- secrets (optional: the feature degrades when absent) ---
+            # QDRANT_URL is sealed too (cloud URLs can embed the cluster id). When the key is
+            # absent the ConfigMap's QDRANT_URL (if any) applies; when present this wins.
+            - name: QDRANT_URL
+              valueFrom:
+                secretKeyRef: { name: cortex-secrets, key: QDRANT_URL, optional: true }
             - name: QDRANT_API_KEY
               valueFrom:
                 secretKeyRef: { name: cortex-secrets, key: QDRANT_API_KEY, optional: true }
