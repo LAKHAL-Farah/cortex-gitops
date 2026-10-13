@@ -55,7 +55,7 @@ jobs:
           tar xzf c.tgz -C "$HOME/bin" kubeconform
           echo "$HOME/bin" >> "$GITHUB_PATH"
       - name: Build + kubeconform (base, overlays, apps)
-        run: ./scripts/validate.sh
+        run: bash ./scripts/validate.sh
 
       - name: Guard - no plaintext Secret in the azure overlay
         run: |
