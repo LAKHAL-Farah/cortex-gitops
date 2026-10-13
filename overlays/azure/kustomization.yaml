@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Production-shaped overlay for AKS.
+#
+# The `images:` digests below are rewritten automatically by the `gitops-handoff`
+# job of the Cortex CI (yq edits `.images[].digest` matching `.name`), which opens
+# a PR here. Do not hand-edit them except for the first bootstrap.
+namespace: cortex
+
+resources:
+  - ../../base
+  # Uncomment once you have sealed the secrets (see README, "Secrets"):
+  # - sealed-cortex-secrets.yaml
+  # Uncomment once you picked an ingress controller and host:
+  # - ingress.yaml
+
+images:
+  - name: ghcr.io/lakhal-farah/cortex-api
+    # PLACEHOLDER until the first handoff PR lands.
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  - name: ghcr.io/lakhal-farah/cortex-web
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+configMapGenerator:
+  - name: cortex-config
+    behavior: merge
+    literals:
+      # TODO: set per environment.
+      - CORTEX_PUBLIC_URL=https://cortex.example.com
+      # - QDRANT_URL=https://<cluster>.cloud.qdrant.io:6333
+      # - PROMETHEUS_URL=https://<prometheus>/api/v1/query
+      # - PROMETHEUS_RANGE_URL=https://<prometheus>/api/v1/query_range
+      # - PROMETHEUS_BASE_URL=https://<prometheus>
+      # - LOKI_URL=https://<loki>
+      # - SMTP_HOST=smtp.example.com

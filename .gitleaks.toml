@@ -1,0 +1,6 @@
+title = "cortex-gitops"
+
+# This repo holds SealedSecrets (encrypted) and nothing else sensitive.
+# Keep the default ruleset and do not add allowlists.
+[extend]
+useDefault = true

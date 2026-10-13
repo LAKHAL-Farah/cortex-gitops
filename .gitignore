@@ -1,0 +1,8 @@
+# Real secret material never goes in git. Only SealedSecrets (overlays/azure/*sealed*.yaml) do.
+secrets.env
+*.secret.yaml
+*.key
+*.pem
+kubeseal-cert.pem.local
+.env
+.DS_Store

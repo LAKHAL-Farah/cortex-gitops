@@ -1,0 +1,72 @@
+name: CI
+
+# Two required checks (set both as required status checks on `main`):
+#   - "Secret scan (gitleaks)"
+#   - "Validate manifests"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  secrets-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install gitleaks (pinned + checksum verified)
+        run: |
+          set -euo pipefail
+          V=8.28.0
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${V}/gitleaks_${V}_linux_x64.tar.gz" -o gl.tgz
+          echo "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb  gl.tgz" | sha256sum -c -
+          tar xzf gl.tgz gitleaks
+      - name: Scan full history
+        run: ./gitleaks detect --source . --no-banner --redact --verbose
+
+  validate:
+    name: Validate manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install kustomize + kubeconform (pinned + checksum verified)
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/bin"
+          curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.3/kustomize_v5.4.3_linux_amd64.tar.gz" -o k.tgz
+          echo "3669470b454d865c8184d6bce78df05e977c9aea31c30df3c669317d43bcc7a7  k.tgz" | sha256sum -c -
+          tar xzf k.tgz -C "$HOME/bin" kustomize
+          curl -sSfL "https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz" -o c.tgz
+          echo "95f14e87aa28c09d5941f11bd024c1d02fdc0303ccaa23f61cef67bc92619d73  c.tgz" | sha256sum -c -
+          tar xzf c.tgz -C "$HOME/bin" kubeconform
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: Build + kubeconform (base, overlays, apps)
+        run: ./scripts/validate.sh
+
+      - name: Guard - no plaintext Secret in the azure overlay
+        run: |
+          set -euo pipefail
+          if kustomize build overlays/azure | grep -qE '^kind: Secret$'; then
+            echo "::error::overlays/azure renders a plaintext Secret. Use a SealedSecret."
+            exit 1
+          fi
+
+      - name: Guard - no placeholder image digest in the azure overlay
+        run: |
+          if grep -q 'sha256:0\{64\}' overlays/azure/kustomization.yaml; then
+            echo "::warning::overlays/azure still has placeholder image digests (waiting for the first handoff PR). Do NOT sync cortex-azure yet."
+          fi

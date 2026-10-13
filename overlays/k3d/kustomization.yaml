@@ -1,0 +1,43 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Local rehearsal on k3d: locally built images, throw-away DEV secrets, an
+# in-cluster mail sink and a Traefik ingress. Never use these values elsewhere.
+namespace: cortex
+
+resources:
+  - ../../base
+  - mailpit.yaml
+  - ingress.yaml
+
+# Images built by scripts/k3d-load-images.sh and imported into the cluster.
+# (newTag replaces the base's placeholder digest.)
+images:
+  - name: ghcr.io/lakhal-farah/cortex-api
+    newName: cortex-api
+    newTag: local
+  - name: ghcr.io/lakhal-farah/cortex-web
+    newName: cortex-web
+    newTag: local
+
+configMapGenerator:
+  - name: cortex-config
+    behavior: merge
+    literals:
+      - CORTEX_PUBLIC_URL=http://cortex.localhost:8080
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - SMTP_STARTTLS=false
+
+# DEV ONLY. Fixed name (no hash) because the manifests reference it by name.
+# Passwords are URL-safe on purpose (DATABASE_URL embeds the DB one).
+secretGenerator:
+  - name: cortex-secrets
+    options:
+      disableNameSuffixHash: true
+    literals:
+      - CORTEX_DB_PASSWORD=devdbpassword1
+      - CORTEX_NEO4J_PASSWORD=devneo4jpassword1
+      - CORTEX_API_KEY=dev-api-key-not-secret
+      - CORTEX_JWT_SECRET=dev-jwt-secret-not-secret-0123456789abcdef
+      - CORTEX_ADMIN_PASSWORD=dev-admin-Passw0rd

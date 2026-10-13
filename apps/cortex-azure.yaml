@@ -1,0 +1,18 @@
+# Argo CD Application for AKS. Manual sync until the rehearsal is trusted.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cortex-azure
+  namespace: argocd
+spec:
+  project: cortex
+  source:
+    repoURL: https://github.com/LAKHAL-Farah/cortex-gitops.git
+    targetRevision: main
+    path: overlays/azure
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cortex
+  syncPolicy:
+    # Switch to `automated: { prune: true, selfHeal: true }` when ready.
+    syncOptions: [ServerSideApply=true]

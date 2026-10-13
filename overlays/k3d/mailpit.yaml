@@ -1,0 +1,64 @@
+# Rehearsal-only mail sink (the compose stack has the same container).
+apiVersion: v1
+kind: Service
+metadata:
+  name: mailpit
+  labels:
+    app.kubernetes.io/name: mailpit
+spec:
+  selector:
+    app.kubernetes.io/name: mailpit
+  ports:
+    - { name: smtp, port: 1025, targetPort: smtp }
+    - { name: ui, port: 8025, targetPort: ui }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mailpit
+  labels:
+    app.kubernetes.io/name: mailpit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mailpit
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mailpit
+    spec:
+      serviceAccountName: cortex
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mailpit
+          # TODO: pin a version/digest (rehearsal-only, so `latest` for now).
+          image: docker.io/axllent/mailpit:latest
+          ports:
+            - { name: smtp, containerPort: 1025 }
+            - { name: ui, containerPort: 8025 }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { cpu: 250m, memory: 128Mi }
+          readinessProbe:
+            tcpSocket: { port: ui }
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: { port: ui }
+            periodSeconds: 20
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: {} }

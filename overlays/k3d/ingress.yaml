@@ -1,0 +1,22 @@
+# k3s ships Traefik; scripts/k3d-up.sh maps host :8080 -> the cluster load balancer.
+# *.localhost resolves to 127.0.0.1 on most systems; otherwise use `kubectl port-forward`.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cortex
+spec:
+  rules:
+    - host: cortex.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: web, port: { number: 3000 } }
+    - host: mail.cortex.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: mailpit, port: { number: 8025 } }

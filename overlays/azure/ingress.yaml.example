@@ -1,0 +1,20 @@
+# Copy to ingress.yaml, set ingressClassName/host/TLS for your controller, then
+# add `- ingress.yaml` to resources in kustomization.yaml.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cortex
+  annotations: {}
+spec:
+  ingressClassName: nginx            # TODO
+  tls:
+    - hosts: [cortex.example.com]    # TODO
+      secretName: cortex-tls
+  rules:
+    - host: cortex.example.com       # TODO
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: web, port: { number: 3000 } }

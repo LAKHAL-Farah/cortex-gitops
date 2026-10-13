@@ -1,0 +1,18 @@
+# Argo CD Application for the local k3d rehearsal (auto-sync).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cortex-k3d
+  namespace: argocd
+spec:
+  project: cortex
+  source:
+    repoURL: https://github.com/LAKHAL-Farah/cortex-gitops.git
+    targetRevision: main
+    path: overlays/k3d
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cortex
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true]

@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cortex
+  namespace: argocd
+spec:
+  description: Cortex platform
+  sourceRepos:
+    - https://github.com/LAKHAL-Farah/cortex-gitops.git
+    - https://bitnami-labs.github.io/sealed-secrets
+  destinations:
+    - { server: https://kubernetes.default.svc, namespace: cortex }
+    - { server: https://kubernetes.default.svc, namespace: sealed-secrets }
+  clusterResourceWhitelist:
+    - { group: "", kind: Namespace }
+    # Needed by the sealed-secrets chart:
+    - { group: rbac.authorization.k8s.io, kind: ClusterRole }
+    - { group: rbac.authorization.k8s.io, kind: ClusterRoleBinding }
+    - { group: apiextensions.k8s.io, kind: CustomResourceDefinition }
