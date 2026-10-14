@@ -1,6 +1,13 @@
 title = "cortex-gitops"
 
 # This repo holds SealedSecrets (encrypted) and nothing else sensitive.
-# Keep the default ruleset and do not add allowlists.
+# Keep the default ruleset. The single allowlist below exists because gitleaks'
+# generic-api-key rule flags SealedSecret ciphertext (key name + high entropy).
 [extend]
 useDefault = true
+
+[[allowlists]]
+description = "SealedSecret ciphertext: encrypted to the cluster public key, safe to commit"
+condition = "AND"   # path AND value shape must both match
+paths = ['''overlays/[^/]+/sealed-[^/]+\.yaml$''']
+regexes = ['''^Ag[A-Za-z0-9+/=]{200,}$''']
