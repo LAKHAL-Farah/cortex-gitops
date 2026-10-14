@@ -8,8 +8,9 @@ CI never deploys: it opens a PR here that bumps image digests.
 base/                 environment-neutral manifests (derived from infra/docker-compose.yml)
 overlays/k3d/         local rehearsal: local images, DEV secrets, mailpit, Traefik ingress
 overlays/k3d-sealed/  same, but secrets come from a SealedSecret (no plaintext in git)
-overlays/azure/       AKS: digest-pinned images (bumped by CI), SealedSecrets, your ingress
-apps/                 Argo CD AppProject + Applications (k3d, azure, sealed-secrets controller)
+overlays/azure/       Azure k3s (3 VMs): digest-pinned images (bumped by CI), SealedSecret, Traefik ingress; collector stays in the lab
+apps/                 Argo CD AppProject + Applications (k3d, azure, sealed-secrets, cert-manager, issuers)
+platform/             cluster-scoped platform config (Let's Encrypt ClusterIssuers)
 scripts/              validate / k3d helpers / secret sealing
 ```
 

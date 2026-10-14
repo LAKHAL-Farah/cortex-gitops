@@ -1,23 +1,27 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-# Production-shaped overlay for AKS.
+# Production-shaped overlay for the 3-node k3s cluster on Azure VMs (Terraform).
+#
+# Topology (plan decision D1): Cortex runs here; the security collector STAYS IN THE
+# LAB (it holds the SSH keys to the nodes and Falco pushes to it). So this overlay
+#   - deletes the collector Deployment/Service/PVC/ConfigMap rendered by the base,
+#   - points the three CORTEX_*_URL variables at http://10.0.1.4:9110 (ZeroTier),
+#   - needs no `collector-ssh` Secret and no Falco intake Service.
 #
 # The `images:` digests below are rewritten automatically by the `gitops-handoff`
 # job of the Cortex CI (yq edits `.images[].digest` matching `.name`), which opens
-# a PR here. Do not hand-edit them except for the first bootstrap.
+# a PR here. The collector entry is kept so that job keeps working even though the
+# collector is not deployed from this overlay.
 namespace: cortex
 resources:
   - ../../base
-  # Uncomment once you have sealed the secrets (see README, "Secrets"):
+  # Uncomment once you have sealed the secrets against THIS cluster's controller
+  # (OVERLAY=azure ./scripts/seal-secrets.sh):
   # - sealed-cortex-secrets.yaml
-  # - sealed-collector-ssh.yaml
-  # Uncomment once you picked an ingress controller and host:
+  # Uncomment once ingress.yaml exists (cp ingress.yaml.example ingress.yaml, set host):
   # - ingress.yaml
-  # Falco on the nodes POSTs alerts here; see falco-intake.yaml.example:
-  # - falco-intake.yaml
 images:
   - name: ghcr.io/lakhal-farah/cortex-api
-    # PLACEHOLDER until the first handoff PR lands.
     digest: sha256:4890f8c5d8ee342b794f27a0bf0e283a7dbd764f8dd3111847d006f028a52453
   - name: ghcr.io/lakhal-farah/cortex-web
     digest: sha256:fa702f2ae44d7a7271b8411de9900e95a5e45f4ff83aeb7a60cdbefb4d30f52c
@@ -27,12 +31,75 @@ configMapGenerator:
   - name: cortex-config
     behavior: merge
     literals:
-      # TODO: set per environment.
+      # TODO: your real hostname (must match ingress.yaml).
       - CORTEX_PUBLIC_URL=https://cortex.example.com
-      # - QDRANT_URL=https://<cluster>.cloud.qdrant.io:6333
-      # - PROMETHEUS_URL=https://<prometheus>/api/v1/query
-      # - PROMETHEUS_RANGE_URL=https://<prometheus>/api/v1/query_range
-      # - PROMETHEUS_BASE_URL=https://<prometheus>
-      # - LOKI_URL=https://<loki>
-      # - SMTP_HOST=smtp.example.com
+      # Lab data plane, reached over ZeroTier (the VMs must have joined the network).
+      - PROMETHEUS_BASE_URL=http://10.0.1.4:9090
+      - PROMETHEUS_URL=http://10.0.1.4:9090/api/v1/query
+      - PROMETHEUS_RANGE_URL=http://10.0.1.4:9090/api/v1/query_range
+      - LOKI_URL=http://10.0.1.4:3100
+      # Collector stays in the lab (D1).
+      - CORTEX_PACKAGE_INVENTORY_URL=http://10.0.1.4:9110
+      - CORTEX_EBPF_ALERTS_URL=http://10.0.1.4:9110
+      - CORTEX_KEYSTONE_TOKEN_LOG_URL=http://10.0.1.4:9110
       - CORTEX_KEYSTONE_EXPECTED_CIDRS=10.0.1.0/24
+      # QDRANT_URL is read from the sealed secret when present; set it here otherwise:
+      # - QDRANT_URL=https://<cluster>.cloud.qdrant.io:6333
+  # Node list the API shows (same seed as overlays/k3d-sealed; IPs only, not secret).
+  - name: api-inventory-seed
+    files:
+      - hosts.ini
+patches:
+  # --- collector is not deployed here ---------------------------------------------
+  - target: {kind: Deployment, name: collector}
+    patch: |-
+      $patch: delete
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: collector
+  - target: {kind: Service, name: collector}
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: collector
+  - target: {kind: PersistentVolumeClaim, name: collector-data}
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: collector-data
+  - target: {kind: ConfigMap, name: cortex-collector-config}
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cortex-collector-config
+  # --- ported from overlays/k3d-sealed: seed the Ansible inventory for the API -------
+  - target:
+      kind: Deployment
+      name: api
+    patch: |-
+      - op: add
+        path: /spec/template/spec/volumes/-
+        value: {name: inventory, emptyDir: {}}
+      - op: add
+        path: /spec/template/spec/volumes/-
+        value: {name: inventory-seed, configMap: {name: api-inventory-seed}}
+      - op: add
+        path: /spec/template/spec/initContainers
+        value:
+          - name: seed-inventory
+            image: busybox:1.37
+            command: ["sh","-c","cp /seed/hosts.ini /inv/hosts.ini"]
+            securityContext: {runAsUser: 10001, runAsGroup: 10001, allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+            volumeMounts:
+              - {name: inventory, mountPath: /inv}
+              - {name: inventory-seed, mountPath: /seed}
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts/-
+        value: {name: inventory, mountPath: /srv/ansible-disabled/inventory}

@@ -9,7 +9,7 @@ CRDS='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{
 KC=(kubeconform -strict -summary -kubernetes-version "$K8S_VERSION"
     -schema-location default -schema-location "$CRDS")
 
-for dir in base overlays/*/; do
+for dir in base overlays/*/ platform/*/; do
   dir="${dir%/}"
   [ -f "$dir/kustomization.yaml" ] || continue
   echo "==> $dir"

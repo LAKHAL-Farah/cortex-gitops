@@ -1,9 +1,12 @@
-# Argo CD Application for AKS. Manual sync until the rehearsal is trusted.
+# Argo CD Application for the Azure k3s cluster. Manual sync until the rehearsal is trusted.
+# Prereqs: apps/sealed-secrets.yaml and apps/cert-manager.yaml Healthy, overlays/azure sealed + merged.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: cortex-azure
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/compare-options: ServerSideDiff=true   # same as the rehearsed k3d-sealed app
 spec:
   project: cortex
   source:
