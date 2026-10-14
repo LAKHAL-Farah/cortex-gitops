@@ -1,15 +1,12 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
 # Local rehearsal on k3d: locally built images, throw-away DEV secrets, an
 # in-cluster mail sink and a Traefik ingress. Never use these values elsewhere.
 namespace: cortex
-
 resources:
   - ../../base
   - mailpit.yaml
   - ingress.yaml
-
 # Images built by scripts/k3d-load-images.sh and imported into the cluster.
 # (newTag replaces the base's placeholder digest.)
 images:
@@ -25,7 +22,7 @@ images:
   # Rehearsal-only mail sink; scripts/pin-digests.sh adds the digest.
   - name: docker.io/axllent/mailpit
     newTag: latest
-
+    digest: sha256:94f6b70c1436defae6799d9ac7ff0eeff9540465b842026d5cdb018f1c0234ea
 configMapGenerator:
   # No lab nodes are reachable from k3d: keep the collector up (so the API gets
   # clean "unknown" answers) but do not run Trivy.
@@ -40,7 +37,6 @@ configMapGenerator:
       - SMTP_HOST=mailpit
       - SMTP_PORT=1025
       - SMTP_STARTTLS=false
-
 # DEV ONLY. Fixed name (no hash) because the manifests reference it by name.
 # Passwords are URL-safe on purpose (DATABASE_URL embeds the DB one).
 secretGenerator:
