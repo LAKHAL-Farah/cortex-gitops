@@ -35,4 +35,4 @@ configMapGenerator:
       # - PROMETHEUS_BASE_URL=https://<prometheus>
       # - LOKI_URL=https://<loki>
       # - SMTP_HOST=smtp.example.com
-      # - CORTEX_KEYSTONE_EXPECTED_CIDRS=10.0.1.0/24
+      - CORTEX_KEYSTONE_EXPECTED_CIDRS=10.0.1.0/24
