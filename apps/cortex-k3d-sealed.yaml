@@ -7,6 +7,8 @@ kind: Application
 metadata:
   name: cortex-k3d-sealed
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
 spec:
   project: cortex
   source:
