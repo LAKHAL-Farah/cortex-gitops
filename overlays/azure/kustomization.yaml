@@ -15,9 +15,9 @@ kind: Kustomization
 namespace: cortex
 resources:
   - ../../base
+  - sealed-cortex-secrets.yaml
   # Uncomment once you have sealed the secrets against THIS cluster's controller
   # (OVERLAY=azure ./scripts/seal-secrets.sh):
-  # - sealed-cortex-secrets.yaml
   # Uncomment once ingress.yaml exists (cp ingress.yaml.example ingress.yaml, set host):
   # - ingress.yaml
 images:
@@ -32,7 +32,7 @@ configMapGenerator:
     behavior: merge
     literals:
       # TODO: your real hostname (must match ingress.yaml).
-      - CORTEX_PUBLIC_URL=https://cortex.example.com
+      - CORTEX_PUBLIC_URL=https://cortex.monitoring.com
       # Lab data plane, reached over ZeroTier (the VMs must have joined the network).
       - PROMETHEUS_BASE_URL=http://10.0.1.4:9090
       - PROMETHEUS_URL=http://10.0.1.4:9090/api/v1/query
