@@ -14,8 +14,8 @@ namespace: cortex
 resources:
   - ../k3d
   # Uncomment after `OVERLAY=k3d-sealed ./scripts/seal-secrets.sh`:
-    - sealed-cortex-secrets.yaml
-    - sealed-collector-ssh.yaml
+  - sealed-cortex-secrets.yaml
+  - sealed-collector-ssh.yaml
 
 patches:
   - target:
