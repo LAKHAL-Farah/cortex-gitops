@@ -18,7 +18,7 @@ resources:
 images:
   - name: ghcr.io/lakhal-farah/cortex-api
     # PLACEHOLDER until the first handoff PR lands.
-    digest: sha256:eff6e572efabbf7c2bc2078665b8621a5bf591c83d19310779ed3355e39bbbf2
+    digest: sha256:4890f8c5d8ee342b794f27a0bf0e283a7dbd764f8dd3111847d006f028a52453
   - name: ghcr.io/lakhal-farah/cortex-web
     digest: sha256:fa702f2ae44d7a7271b8411de9900e95a5e45f4ff83aeb7a60cdbefb4d30f52c
   - name: ghcr.io/lakhal-farah/cortex-collector
