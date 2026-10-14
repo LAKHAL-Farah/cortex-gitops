@@ -31,7 +31,9 @@ configMapGenerator:
       - NVIDIA_NIM_MODEL=nvidia/nemotron-3-super-120b-a12b
       - NVIDIA_NIM_FAST_MODEL=nvidia/nemotron-3-super-120b-a12b
       - FORECAST_DATASET_REFRESH_INTERVAL_SECONDS=3600
-
+  - name: api-inventory-seed
+    files:
+      - hosts.ini
 patches:
   - target:
       kind: Secret
@@ -52,3 +54,26 @@ patches:
       kind: Secret
       metadata:
         name: cortex-secrets
+  - target:
+      kind: Deployment
+      name: api
+    patch: |-
+      - op: add
+        path: /spec/template/spec/volumes/-
+        value: {name: inventory, emptyDir: {}}
+      - op: add
+        path: /spec/template/spec/volumes/-
+        value: {name: inventory-seed, configMap: {name: api-inventory-seed}}
+      - op: add
+        path: /spec/template/spec/initContainers
+        value:
+          - name: seed-inventory
+            image: busybox:1.37
+            command: ["sh","-c","cp /seed/hosts.ini /inv/hosts.ini"]
+            securityContext: {runAsUser: 10001, runAsGroup: 10001, allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+            volumeMounts:
+              - {name: inventory, mountPath: /inv}
+              - {name: inventory-seed, mountPath: /seed}
+      - op: add
+        path: /spec/template/spec/containers/0/volumeMounts/-
+        value: {name: inventory, mountPath: /srv/ansible-disabled/inventory}
