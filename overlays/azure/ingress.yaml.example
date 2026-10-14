@@ -1,12 +1,15 @@
-# Copy to ingress.yaml, set ingressClassName/host/TLS for your controller, then
-# add `- ingress.yaml` to resources in kustomization.yaml.
+# k3s ships Traefik (ingress class `traefik`); cert-manager issues the certificate.
+# Copy to ingress.yaml, set the host, then add `- ingress.yaml` to resources in
+# kustomization.yaml. Start with the STAGING issuer; switch to letsencrypt-prod once
+# the staging certificate is Ready (avoids Let's Encrypt rate limits).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: cortex
-  annotations: {}
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging   # then: letsencrypt-prod
 spec:
-  ingressClassName: nginx            # TODO
+  ingressClassName: traefik
   tls:
     - hosts: [cortex.example.com]    # TODO
       secretName: cortex-tls

@@ -8,12 +8,18 @@ spec:
   sourceRepos:
     - https://github.com/LAKHAL-Farah/cortex-gitops.git
     - https://bitnami.github.io/sealed-secrets
+    - https://charts.jetstack.io
   destinations:
     - { server: https://kubernetes.default.svc, namespace: cortex }
     - { server: https://kubernetes.default.svc, namespace: sealed-secrets }
+    - { server: https://kubernetes.default.svc, namespace: cert-manager }
   clusterResourceWhitelist:
     - { group: "", kind: Namespace }
     # Needed by the sealed-secrets chart:
     - { group: rbac.authorization.k8s.io, kind: ClusterRole }
     - { group: rbac.authorization.k8s.io, kind: ClusterRoleBinding }
     - { group: apiextensions.k8s.io, kind: CustomResourceDefinition }
+    # Needed by the cert-manager chart and the ClusterIssuers:
+    - { group: admissionregistration.k8s.io, kind: MutatingWebhookConfiguration }
+    - { group: admissionregistration.k8s.io, kind: ValidatingWebhookConfiguration }
+    - { group: cert-manager.io, kind: ClusterIssuer }

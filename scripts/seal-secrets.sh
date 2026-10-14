@@ -6,6 +6,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 OVERLAY="${OVERLAY:-azure}"
+# The azure overlay does not deploy the collector (it stays in the lab), so it needs neither
+# collector-ssh nor COLLECTOR_FALCO_TOKEN. Force with SEAL_COLLECTOR_SSH=1 / 0.
+if [ -z "${SEAL_COLLECTOR_SSH:-}" ]; then
+  [ "$OVERLAY" = azure ] && SEAL_COLLECTOR_SSH=0 || SEAL_COLLECTOR_SSH=1
+fi
 [ -d "overlays/$OVERLAY" ] || { echo "no such overlay: $OVERLAY"; exit 1; }
 for c in kubectl kubeseal; do
   command -v "$c" >/dev/null || { echo "$c not found in PATH"; exit 1; }
@@ -42,7 +47,9 @@ dups="$(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' "$work/clean.env" | sort | uniq -d |
 
 # Required keys: must be present AND non-empty (a missing key used to exit silently).
 missing=()
-for k in CORTEX_DB_PASSWORD CORTEX_NEO4J_PASSWORD CORTEX_API_KEY CORTEX_JWT_SECRET CORTEX_ADMIN_PASSWORD COLLECTOR_FALCO_TOKEN; do
+req="CORTEX_DB_PASSWORD CORTEX_NEO4J_PASSWORD CORTEX_API_KEY CORTEX_JWT_SECRET CORTEX_ADMIN_PASSWORD"
+[ "$SEAL_COLLECTOR_SSH" = 1 ] && req="$req COLLECTOR_FALCO_TOKEN"
+for k in $req; do
   v="$(grep -E "^${k}=" "$work/clean.env" | head -1 | cut -d= -f2- || true)"
   [ -n "$v" ] || missing+=("$k")
 done
@@ -68,6 +75,11 @@ kubectl create secret generic cortex-secrets --namespace cortex \
 echo "wrote $out"
 
 # --- collector-ssh: private key + Ansible inventory (both required) ------------
+if [ "$SEAL_COLLECTOR_SSH" != 1 ]; then
+  echo "skipping collector-ssh (collector not deployed from overlay '$OVERLAY')"
+  echo "next: uncomment sealed-cortex-secrets.yaml in overlays/$OVERLAY/kustomization.yaml, then git add it"
+  exit 0
+fi
 # Put them in collector-secrets/ (gitignored): id_ed25519 and hosts.ini.
 KEY="collector-secrets/id_ed25519"; INV="collector-secrets/hosts.ini"
 [ -f "$KEY" ] || { echo "missing $KEY (the SSH key the collector uses on the nodes)"; exit 1; }

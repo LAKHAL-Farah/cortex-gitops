@@ -1,0 +1,29 @@
+# cert-manager (controller + CRDs). Install BEFORE apps/cluster-issuers.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: argocd
+spec:
+  project: cortex
+  source:
+    repoURL: https://charts.jetstack.io
+    chart: cert-manager
+    targetRevision: v1.20.3        # pinned chart version (bump via PR)
+    helm:
+      releaseName: cert-manager
+      valuesObject:
+        crds:
+          enabled: true
+          keep: false              # ephemeral environment: CRDs go with the release
+        global:
+          # Keep leader-election Roles in our own namespace (not kube-system),
+          # so the AppProject does not need to allow kube-system.
+          leaderElection:
+            namespace: cert-manager
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cert-manager
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
