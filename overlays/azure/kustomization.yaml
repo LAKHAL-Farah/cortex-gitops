@@ -24,7 +24,7 @@ images:
   - name: ghcr.io/lakhal-farah/cortex-api
     digest: sha256:4890f8c5d8ee342b794f27a0bf0e283a7dbd764f8dd3111847d006f028a52453
   - name: ghcr.io/lakhal-farah/cortex-web
-    digest: sha256:fa702f2ae44d7a7271b8411de9900e95a5e45f4ff83aeb7a60cdbefb4d30f52c
+    digest: sha256:b7d995ba66fcbd357ad1924ed3fa707593dc09e1087f6f3911e40154ee903d4c
   - name: ghcr.io/lakhal-farah/cortex-collector
     digest: sha256:dcc72f36220c41048f638c2d217848c129508ac00914e694683e4bd9c802e50f
 configMapGenerator:
