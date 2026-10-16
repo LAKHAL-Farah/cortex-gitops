@@ -17,7 +17,7 @@ resources:
   - sealed-cortex-secrets.yaml
   - sealed-collector-ssh.yaml
   # Uncomment after `OVERLAY=k3d-sealed ./scripts/seal-secrets.sh` with collector-secrets/clouds.yaml present:
-  # - sealed-openstack-clouds.yaml
+  - sealed-openstack-clouds.yaml
 
 configMapGenerator:
   - name: cortex-config
