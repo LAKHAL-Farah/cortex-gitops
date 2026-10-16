@@ -33,6 +33,9 @@ configMapGenerator:
       - NVIDIA_NIM_MODEL=nvidia/nemotron-3-super-120b-a12b
       - NVIDIA_NIM_FAST_MODEL=nvidia/nemotron-3-super-120b-a12b
       - FORECAST_DATASET_REFRESH_INTERVAL_SECONDS=3600
+      - CORTEX_PACKAGE_INVENTORY_URL=http://10.0.1.4:9110
+      - CORTEX_EBPF_ALERTS_URL=http://10.0.1.4:9110
+      - CORTEX_KEYSTONE_TOKEN_LOG_URL=http://10.0.1.4:9110
   - name: api-inventory-seed
     files:
       - hosts.ini
