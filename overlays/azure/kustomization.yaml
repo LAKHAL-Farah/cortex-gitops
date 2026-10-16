@@ -24,7 +24,7 @@ resources:
   # - ingress.yaml
 images:
   - name: ghcr.io/lakhal-farah/cortex-api
-    digest: sha256:4890f8c5d8ee342b794f27a0bf0e283a7dbd764f8dd3111847d006f028a52453
+    digest: sha256:f8fa1d24e4c36efba5c2dc9c2d068866e03e90e150e846c0e09bd87d0db70566
   - name: ghcr.io/lakhal-farah/cortex-web
     digest: sha256:b7d995ba66fcbd357ad1924ed3fa707593dc09e1087f6f3911e40154ee903d4c
   - name: ghcr.io/lakhal-farah/cortex-collector
