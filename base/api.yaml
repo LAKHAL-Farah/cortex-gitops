@@ -70,6 +70,9 @@ spec:
             - { name: HOME, value: /tmp }
             - { name: TMPDIR, value: /tmp }
             - { name: XDG_CACHE_HOME, value: /tmp/.cache }
+            # OpenStack SDK: read-only reader identity from the `openstack-clouds` Secret.
+            - { name: OS_CLOUD, value: cortex-reader }
+            - { name: OS_CLIENT_CONFIG_FILE, value: /etc/openstack/clouds.yaml }
             # --- secrets (required) ---
             # Order matters: DATABASE_URL expands $(CORTEX_DB_PASSWORD), so use a
             # URL-safe password (no @ : / ? # %).
@@ -139,11 +142,19 @@ spec:
             - { name: tmp, mountPath: /tmp }
             - { name: data, mountPath: /data }
             - { name: file-sd, mountPath: /file_sd }
+            - { name: openstack-clouds, mountPath: /etc/openstack, readOnly: true }
       volumes:
         - name: tmp
           emptyDir: { sizeLimit: 512Mi }
         - name: file-sd
           emptyDir: { sizeLimit: 16Mi }
+        # optional: the pod still starts (OpenStack features degrade) until the
+        # sealed `openstack-clouds` Secret is enabled in the overlay.
+        - name: openstack-clouds
+          secret:
+            secretName: openstack-clouds
+            optional: true
+            defaultMode: 0440       # fsGroup 10001 can read it
         - name: data
           persistentVolumeClaim:
             claimName: api-data
