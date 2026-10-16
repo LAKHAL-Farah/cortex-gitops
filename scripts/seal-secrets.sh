@@ -74,6 +74,26 @@ kubectl create secret generic cortex-secrets --namespace cortex \
   --from-env-file="$work/filtered.env" --dry-run=client -o yaml | seal "$out"
 echo "wrote $out"
 
+# --- openstack-clouds: clouds.yaml for the topology/quota/audit services ------
+# Optional. Put the rendered file (reader cloud only) in collector-secrets/clouds.yaml
+# (gitignored). Without it the API logs "Cloud cortex-reader was not found".
+CLOUDS="collector-secrets/clouds.yaml"
+if [ -f "$CLOUDS" ]; then
+  grep -q '^clouds:' "$CLOUDS" || { echo "$CLOUDS does not start a 'clouds:' mapping"; exit 1; }
+  if grep -q '@@' "$CLOUDS"; then
+    echo "$CLOUDS still contains @@PLACEHOLDER@@ tokens: render it with Cortex/openstack/render-clouds.sh first"
+    exit 1
+  fi
+  tr -d '\r' < "$CLOUDS" > "$work/clouds.yaml"
+  out="overlays/$OVERLAY/sealed-openstack-clouds.yaml"
+  kubectl create secret generic openstack-clouds --namespace cortex \
+    --from-file=clouds.yaml="$work/clouds.yaml" --dry-run=client -o yaml | seal "$out"
+  echo "wrote $out"
+  echo "next: uncomment sealed-openstack-clouds.yaml in overlays/$OVERLAY/kustomization.yaml, then git add it"
+else
+  echo "skipping openstack-clouds ($CLOUDS not found)"
+fi
+
 # --- collector-ssh: private key + Ansible inventory (both required) ------------
 if [ "$SEAL_COLLECTOR_SSH" != 1 ]; then
   echo "skipping collector-ssh (collector not deployed from overlay '$OVERLAY')"
