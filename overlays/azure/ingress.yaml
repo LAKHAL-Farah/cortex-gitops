@@ -8,7 +8,7 @@ kind: Ingress
 metadata:
   name: cortex
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-staging   # then: letsencrypt-prod
+    cert-manager.io/cluster-issuer: letsencrypt-prod   # then: letsencrypt-prod
 spec:
   ingressClassName: traefik
   tls:
