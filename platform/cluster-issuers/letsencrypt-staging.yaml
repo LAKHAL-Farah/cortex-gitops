@@ -6,7 +6,7 @@ metadata:
 spec:
   acme:
     server: https://acme-staging-v02.api.letsencrypt.org/directory
-    email: you@example.com        # TODO: real address (expiry notices go here)
+    email: farah.lakhal.enactus@gmail.com        # ACME account contact (expiry notices); Let's Encrypt rejects example.com
     privateKeySecretRef:
       name: letsencrypt-staging-account-key
     solvers:

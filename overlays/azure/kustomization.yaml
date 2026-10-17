@@ -21,7 +21,7 @@ resources:
   # Uncomment once you have sealed the secrets against THIS cluster's controller
   # (OVERLAY=azure ./scripts/seal-secrets.sh):
   # Uncomment once ingress.yaml exists (cp ingress.yaml.example ingress.yaml, set host):
-  # - ingress.yaml
+  - ingress.yaml
 images:
   - name: ghcr.io/lakhal-farah/cortex-api
     digest: sha256:f8fa1d24e4c36efba5c2dc9c2d068866e03e90e150e846c0e09bd87d0db70566
@@ -33,8 +33,8 @@ configMapGenerator:
   - name: cortex-config
     behavior: merge
     literals:
-      # TODO: your real hostname (must match ingress.yaml).
-      - CORTEX_PUBLIC_URL=https://cortex.monitoring.com
+      # Must match overlays/azure/ingress.yaml.
+      - CORTEX_PUBLIC_URL=https://cortex.cortexmonitoring.dev
       # Lab data plane, reached over ZeroTier (the VMs must have joined the network).
       - PROMETHEUS_BASE_URL=http://10.0.1.4:9090
       - PROMETHEUS_URL=http://10.0.1.4:9090/api/v1/query
